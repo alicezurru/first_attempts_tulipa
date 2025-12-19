@@ -1,0 +1,8 @@
+asset,type,capacity,investment_method,investment_integer,technical_lifetime,discount_rate,max_ramp_up,max_ramp_down,ramping
+Coal,producer,400,simple,false,1,0,0.4,0.4,true
+Gas,producer,250,simple,false,1,0,0.75,0.75,true
+Lignite,producer,400,simple,false,1,0,0.5,0.5,true
+Oil,producer,100,simple,false,1,0,0.9,0.9,true
+WindOn,producer,100,simple,false,1,0,1,1,true
+Demand_GER,consumer,0.0,none,false,1,0,0,0,false
+Loss_of_load,producer,1,none,false,1,0,0,0,false

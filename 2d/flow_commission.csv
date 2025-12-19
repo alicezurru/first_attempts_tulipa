@@ -1,0 +1,7 @@
+from_asset,to_asset,commission_year,conversion_coefficient
+Coal,Demand_GER,1900,1.0
+Gas,Demand_GER,1900,1.0
+Lignite,Demand_GER,1900,1.0
+Oil,Demand_GER,1900,1.0
+WindOn,Demand_GER,1900,1.0
+Loss_of_load,Demand_GER,1900,1.0

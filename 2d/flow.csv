@@ -1,0 +1,7 @@
+from_asset,to_asset,technical_lifetime,discount_rate
+Coal,Demand_GER,1,0.0
+Gas,Demand_GER,1,0.0
+Lignite,Demand_GER,1,0.0
+Oil,Demand_GER,1,0.0
+WindOn,Demand_GER,1,0.0
+Loss_of_load,Demand_GER,1,0.0

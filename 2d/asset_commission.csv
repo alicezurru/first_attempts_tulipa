@@ -1,0 +1,8 @@
+asset,commission_year,investment_cost
+Coal,1900,33.75
+Gas,1900,23.33333333
+Lignite,1900,38.75
+Oil,1900,24.16666667
+WindOn,1900,48.4
+Demand_GER,1900,0.0
+Loss_of_load,1900,0.0
