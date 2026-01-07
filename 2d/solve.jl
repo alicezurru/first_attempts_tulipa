@@ -9,8 +9,6 @@ import TulipaClustering as TC
 using Random
 Random.seed!(123)
 
-using DataFrames, DuckDB
-
 connection = DBInterface.connect(DuckDB.DB)
 input_dir = "2d"
 output_dir = "2d/results"
@@ -19,48 +17,26 @@ TIO.read_csv_folder(connection, input_dir)
 nice_query(str) = DuckDB.query(connection, str) |> DataFrame
 
 
-
-nice_query("CREATE TABLE profiles AS 
-SELECT 'demand' AS profile_name, period, timestep, scenario AS year, location, (demand/66113.79524366604) AS value FROM demand
+nice_query("CREATE OR REPLACE TABLE profiles AS 
+SELECT 'demand' AS profile_name, period, timestep, scenario AS year, location, demand AS value FROM demand
 UNION ALL 
 SELECT technology AS profile_name, period, timestep, scenario AS year, location, availability AS value FROM generation_availability")
 
-nice_query("CREATE TABLE max_demand AS
+nice_query("CREATE OR REPLACE TABLE max_demand AS
     SELECT location, MAX(demand) AS max_demand
-    FROM demand_data
+    FROM demand
     GROUP BY location
-")
+") # we get max demand from real data demand (not artificial rp_demand)
 TIO.get_table(connection,"max_demand")
-nice_query("
-scaled_demand AS (
-    SELECT
-        d.period,
-        d.timestep,
-        d.scenario,
-        d.location,
-        d.demand / m.max_demand AS demand  -- scaled between 0 and 1
-    FROM demand_data d
-    JOIN max_demand m ON d.location = m.location
-),
-scaled_availability AS (
-    SELECT
-        g.period,
-        g.timestep,
-        g.scenario,
-        g.location,
-        g.availability / s.demand AS availability  -- divide by scaled demand
-    FROM generation_availability_data g
-    JOIN scaled_demand s
-      ON g.location = s.location
-     AND g.period = s.period
-     AND g.timestep = s.timestep
-     AND g.scenario = s.scenario
-)
-SELECT * 
-FROM scaled_demand;
--- or
-SELECT * 
-FROM scaled_availability; ")
+
+nice_query("UPDATE profiles p
+SET value = p.value / m.max_demand
+FROM max_demand m
+WHERE p.profile_name = 'demand'
+  AND p.location = m.location")
+TIO.get_table(connection,"profiles")
+
+
 
 TIO.show_tables(connection)
 TIO.get_table(connection,"profiles")
@@ -69,7 +45,7 @@ period_duration = 1
 num_rps = 3
 
 # let's get the initial representative periods
-initial_rp = [1, 67, 133]
+initial_rp = [1,67,133]
 case_stmt = join(
     ["WHEN $p THEN $i" for (i, p) in enumerate(initial_rp)],
     "\n"
@@ -91,7 +67,7 @@ SELECT
     'demand' AS profile_name,
     scenario AS year,
     location,
-    (demand/66113.79524366604) AS value
+    demand AS value
 FROM rp_demand
 WHERE period IN ($period_list)")
 
@@ -116,23 +92,34 @@ SELECT * FROM initial_demand
 UNION ALL
 SELECT * FROM initial_availability;
 ")
+
+nice_query("UPDATE initial_rp p
+SET value = p.value / m.max_demand
+FROM max_demand m
+WHERE p.profile_name = 'demand'
+  AND p.location = m.location")
+TIO.get_table(connection,"initial_rp")
+
 #given that the data comes from Lotte, we multiply by the annualization factor
 AF = 365*24/100
 nice_query("UPDATE flow_milestone
 SET operational_cost = operational_cost * $AF;
 ")
 
-TIO.get_table(connection,"initial_rp")
+TIO.get_table(connection,"flow_milestone")
 
 # use tulipa clustering
+init = TIO.get_table(connection,"initial_rp")
 using TulipaClustering
 clusters = cluster!(connection, 
                     period_duration,
                     num_rps; 
                     method =:convex_hull, 
                     weight_type = :convex, 
-                    initial_representatives=TIO.get_table(connection,"initial_rp"),
-                    distance=Distances.Euclidean()
+                    #initial_representatives=init,
+                    distance=Distances.Euclidean(),
+                    weight_fitting_kwargs = Dict(
+                      :learning_rate => 0.5) # added by me after problem with weights
                     )
 
 
@@ -162,7 +149,7 @@ select!(
     :time_block_start => :timestep,
     :solution
 )
-from_asset = "Gas"
+from_asset = "WindOn"
 to_asset = "Demand_GER"
 year = 1900
 filtered_flow = filter(
@@ -200,6 +187,21 @@ SELECT 'demand' AS profile_name, period, timestep, scenario AS year, location, d
 UNION ALL 
 SELECT technology AS profile_name, period, timestep, scenario AS year, location, availability AS value FROM generation_availability"
 )
+DuckDB.query(connection2,"CREATE OR REPLACE TABLE max_demand AS
+    SELECT location, MAX(demand) AS max_demand
+    FROM demand
+    GROUP BY location
+")
+TIO.get_table(connection, "max_demand")
+DuckDB.query(connection2,"UPDATE profiles p
+SET value = p.value / m.max_demand
+FROM max_demand m
+WHERE p.profile_name = 'demand'
+  AND p.location = m.location")
+DuckDB.query(connection2,"UPDATE flow_milestone
+SET operational_cost = operational_cost * $AF;
+")
+TIO.get_table(connection2, "profiles")
 output_dir2 = "2d/results2"
 # rename 'timestep' to a temporary name
 DuckDB.query(connection2, "ALTER TABLE profiles RENAME COLUMN timestep TO tmp")
@@ -254,3 +256,44 @@ plot!(
     dpi = 600,
 )
 
+# plot periods
+using DataFrames, Tullio, Plots
+
+profiles = TIO.get_table(connection, "profiles")
+
+demand_df = filter(row -> row.profile_name == "demand", profiles)
+generation_df = filter(row -> row.profile_name != "demand", profiles)
+
+joined = innerjoin(demand_df, generation_df,
+                   on=[:period, :timestep, :year, :location],
+                   makeunique=true)
+
+rename!(joined, Dict(:value => :demand, :value_1 => :availability, :profile_name_1 => :technology))
+
+scatter(joined.demand, joined.availability,
+        xlabel="Demand",
+        ylabel="Availability",
+        label="Base Periods"
+        #legend=:topright
+        )
+
+
+rp = TIO.get_table(connection, "profiles_rep_periods")
+
+rp_demand = filter(row -> row.profile_name == "demand", rp)
+rp_generation = filter(row -> row.profile_name != "demand", rp)
+
+rp_joined = innerjoin(rp_demand, rp_generation,
+                      on=[:rep_period, :timestep, :year, :location],
+                      makeunique=true)
+
+rename!(rp_joined, Dict(:value => :demand, :value_1 => :availability, :profile_name_1 => :technology))
+scatter!(rp_joined.demand, rp_joined.availability,
+         color=:red,
+         marker=:circle,
+         label="Representative Periods"
+         )
+
+weights = TIO.get_table(connection,"rep_periods_mapping")
+show(weights,allrows=true, allcols=true)
+show(profiles,allrows=true, allcols=true)

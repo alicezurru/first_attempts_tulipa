@@ -1,6 +1,6 @@
 id,asset,milestone_year,investment_integer,capacity,investment_limit,solution
 1,Coal,1900,false,400.0,,0.0
-2,Gas,1900,false,250.0,,60.714366743115065
+2,Gas,1900,false,250.0,,0.0
 3,Lignite,1900,false,400.0,,0.0
 4,Oil,1900,false,100.0,,0.0
-5,WindOn,1900,false,100.0,,1373.5971275533466
+5,WindOn,1900,false,100.0,,1826.9003327105038

@@ -1,4 +1,4 @@
 id,asset,year,rep_period,time_block_start,time_block_end,dual_balance_consumer
-1,Demand_GER,1900,1,1,1,189.77333332999999
-2,Demand_GER,1900,2,1,1,8.541
-3,Demand_GER,1900,3,1,1,11.338527609681954
+1,Demand_GER,1900,1,1,1,114.38190926926488
+2,Demand_GER,1900,2,1,1,8.18256972166473
+3,Demand_GER,1900,3,1,1,5.620377914218394

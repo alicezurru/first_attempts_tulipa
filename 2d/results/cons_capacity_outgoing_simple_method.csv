@@ -2,7 +2,7 @@ id,asset,year,rep_period,time_block_start,time_block_end,dual_max_output_flows_l
 1,Coal,1900,1,1,1,0.0
 2,Coal,1900,2,1,1,0.0
 3,Coal,1900,3,1,1,0.0
-4,Gas,1900,1,1,1,-23.33333333
+4,Gas,1900,1,1,1,0.0
 5,Gas,1900,2,1,1,0.0
 6,Gas,1900,3,1,1,0.0
 7,Lignite,1900,1,1,1,0.0
@@ -14,6 +14,6 @@ id,asset,year,rep_period,time_block_start,time_block_end,dual_max_output_flows_l
 13,Oil,1900,1,1,1,0.0
 14,Oil,1900,2,1,1,0.0
 15,Oil,1900,3,1,1,0.0
-16,WindOn,1900,1,1,1,-181.45133332999998
+16,WindOn,1900,1,1,1,-106.284856905148
 17,WindOn,1900,2,1,1,0.0
-18,WindOn,1900,3,1,1,-6.301527609681955
+18,WindOn,1900,3,1,1,0.0
